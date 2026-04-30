@@ -4,69 +4,128 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>CTF Tablet Controller</title>
+    <title>CTF Tablet Controller - Live Sync Version</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; }
-        #scanner-container { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; position: relative; z-index: 10; transition: opacity 0.5s; }
-        .palm-area { position: relative; width: 80vw; height: 60vh; max-width: 500px; fill: none; stroke: #00ff41; stroke-width: 2; cursor: pointer; }
-        .palm-area svg { width: 100%; height: 100%; filter: drop-shadow(0 0 15px #00ff41); }
-        #scan-bar { position: absolute; left: 0; width: 100%; height: 4px; background: linear-gradient(to right, transparent, #00ff41, transparent); box-shadow: 0 0 20px #00ff41; top: 10%; display: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
+        
+        #scanner-container { 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            height: 100vh; position: relative; z-index: 10; transition: opacity 0.5s; 
+        }
+
+        /* 手掌区域 */
+        .palm-area { 
+            position: relative; width: 80vw; height: 50vh; max-width: 500px; 
+            fill: rgba(0, 255, 65, 0.1); stroke: #00ff41; stroke-width: 2; 
+            cursor: pointer; transition: all 0.2s;
+        }
+
+        .palm-area svg { width: 100%; height: 100%; filter: drop-shadow(0 0 10px #00ff41); }
+
+        /* 扫描线 */
+        #scan-bar { 
+            position: absolute; left: 0; width: 100%; height: 4px; 
+            background: #00ff41; box-shadow: 0 0 20px #00ff41; 
+            top: 10%; display: none; z-index: 15;
+        }
+
         @keyframes scanning { 0% { top: 10%; } 100% { top: 90%; } }
+
         .status-panel { margin-top: 40px; color: #00ff41; text-align: center; letter-spacing: 3px; }
-        .status-main { font-size: 2rem; font-weight: bold; }
-        #matrix-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 5; }
-        .scanning-active { animation: shake 0.1s infinite; stroke: #fff !important; }
+        .status-main { font-size: 2rem; font-weight: bold; margin-bottom: 5px; }
+
+        /* 震动效果 */
+        .scanning-active { animation: shake 0.1s infinite; stroke: #fff !important; fill: rgba(0, 255, 65, 0.3) !important; }
         @keyframes shake { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, -1px); } }
+
+        #matrix-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 5; }
     </style>
 </head>
 <body>
     <div id="scanner-container">
         <div class="palm-area" id="palm-trigger">
             <div id="scan-bar"></div>
-            <svg viewBox="0 0 512 512"><path d="M448,192c-17.67,0-32,14.33-32,32v96c0,17.67,14.33,32,32,32s32-14.33,32-32V224C480,206.33,465.67,192,448,192z M352,128 c-17.67,0-32,14.33-32,32v160c0,17.67,14.33,32,32,32s32-14.33,32-32V160C384,142.33,369.67,128,352,128z M256,96 c-17.67,0-32,14.33-32,32v192c0,17.67,14.33,32,32,32s32-14.33,32-32V128C288,110.33,273.67,96,256,96z M160,128 c-17.67,0-32,14.33-32,32v160c0,17.67,14.33,32,32,32s32-14.33,32-32V160C192,142.33,177.67,128,160,128z M120.59,332.17 c-10.47-11.23-27.35-12.87-39.75-4.22L32,362.11V448c0,17.67,14.33,32,32,32h249.94c48.45,0,94.21-23.73,121.84-63.19l31.55-45.07 c6.88-9.83,4.24-23.32-5.88-29.83c-9.5-6.12-22.18-3.92-29.07,5.08L360,440V288c0-17.67-14.33-32-32-32s-32,14.33-32,32v96h-16v-192 c0-17.67-14.33-32-32-32s-32,14.33-32,32v192h-16V128c0-17.67-14.33-32-32-32s-32,14.33-32,32v224.51 c-1.39-0.96-2.85-1.83-4.38-2.6L120.59,332.17z"/></svg>
-            <svg onclick="socket.emit('start_ceremony')"></svg>
+            <svg viewBox="0 0 512 512">
+                <path d="M448,192c-17.67,0-32,14.33-32,32v96c0,17.67,14.33,32,32,32s32-14.33,32-32V224C480,206.33,465.67,192,448,192z M352,128 c-17.67,0-32,14.33-32,32v160c0,17.67,14.33,32,32,32s32-14.33,32-32V160C384,142.33,369.67,128,352,128z M256,96 c-17.67,0-32,14.33-32,32v192c0,17.67,14.33,32,32,32s32-14.33,32-32V128C288,110.33,273.67,96,256,96z M160,128 c-17.67,0-32,14.33-32,32v160c0,17.67,14.33,32,32,32s32-14.33,32-32V160C192,142.33,177.67,128,160,128z M120.59,332.17 c-10.47-11.23-27.35-12.87-39.75-4.22L32,362.11V448c0,17.67,14.33,32,32,32h249.94c48.45,0,94.21-23.73,121.84-63.19l31.55-45.07 c6.88-9.83,4.24-23.32-5.88-29.83c-9.5-6.12-22.18-3.92-29.07,5.08L360,440V288c0-17.67-14.33-32-32-32s-32,14.33-32,32v96h-16v-192 c0-17.67-14.33-32-32-32s-32,14.33-32,32v192h-16V128c0-17.67-14.33-32-32-32s-32,14.33-32,32v224.51 c-1.39-0.96-2.85-1.83-4.38-2.6L120.59,332.17z"/>
+            </svg>
         </div>
+        
         <div class="status-panel">
             <div class="status-main" id="m-text">SYSTEM LOCKED</div>
-            <div style="opacity:0.7">PLACE PALM TO AUTHORIZE</div>
+            <div id="sub-text" style="opacity:0.7">PLACE PALM TO AUTHORIZE</div>
         </div>
     </div>
+
     <canvas id="matrix-canvas"></canvas>
 
     <script>
+        // 请确保这里的 IP 地址与电脑一致
         const socket = io('http://192.168.0.46:3000'); 
+        
         const trigger = document.getElementById('palm-trigger');
         const bar = document.getElementById('scan-bar');
         const mText = document.getElementById('m-text');
+        const subText = document.getElementById('sub-text');
         const canvas = document.getElementById('matrix-canvas');
         const ctx = canvas.getContext('2d');
-        let pressTimer;
 
-        const start = (e) => {
+        let progress = 0;
+        let syncInterval;
+
+        // --- 实时逻辑 ---
+
+        const startPress = (e) => {
             e.preventDefault();
             trigger.classList.add('scanning-active');
             bar.style.display = 'block';
             bar.style.animation = 'scanning 1.5s infinite alternate';
-            mText.innerText = 'SCANNING...';
-            pressTimer = setTimeout(onSuccess, 3000);
+            
+            clearInterval(syncInterval);
+            syncInterval = setInterval(() => {
+                if (progress < 100) {
+                    progress += 1; // 调整长按的速度
+                    socket.emit('send_progress', progress); // 发送实时进度到服务器
+                    mText.innerText = `SCANNING ${progress}%`;
+                    subText.innerText = "DO NOT REMOVE PALM";
+                } else {
+                    clearInterval(syncInterval);
+                    onSuccess();
+                }
+            }, 30); // 30毫秒同步一次，保证 display.html 看起来很顺滑
         };
 
-        const stop = () => {
-            clearTimeout(pressTimer);
+        const stopPress = () => {
             trigger.classList.remove('scanning-active');
             bar.style.display = 'none';
-            mText.innerText = 'SYSTEM LOCKED';
+            clearInterval(syncInterval);
+
+            // 放开手后进度自动倒退
+            syncInterval = setInterval(() => {
+                if (progress > 0) {
+                    progress -= 2; // 倒退速度稍快
+                    if (progress < 0) progress = 0;
+                    socket.emit('send_progress', progress); // 告诉电脑进度正在倒退
+                    mText.innerText = `SCANNING ${progress}%`;
+                } else {
+                    clearInterval(syncInterval);
+                    mText.innerText = 'SYSTEM LOCKED';
+                    subText.innerText = "PLACE PALM TO AUTHORIZE";
+                }
+            }, 20);
         };
 
-        trigger.addEventListener('mousedown', start);
-        trigger.addEventListener('touchstart', start);
-        window.addEventListener('mouseup', stop);
-        window.addEventListener('touchend', stop);
+        // 事件绑定
+        trigger.addEventListener('mousedown', startPress);
+        trigger.addEventListener('touchstart', startPress);
+        window.addEventListener('mouseup', stopPress);
+        window.addEventListener('touchend', stopPress);
 
         function onSuccess() {
-            socket.emit('start_ceremony'); // 发送给电脑
+            socket.emit('start_ceremony'); // 最终触发信号
+            mText.innerText = "ACCESS GRANTED";
+            subText.innerText = "INITIALIZING CTF PROTOCOL...";
+            
             document.getElementById('scanner-container').style.opacity = '0';
             setTimeout(() => {
                 document.getElementById('scanner-container').style.display = 'none';
@@ -74,13 +133,14 @@
             }, 500);
         }
 
+        // --- 代码雨动画 ---
         function startMatrix() {
             canvas.style.display = 'block';
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             const alphabet = "01";
             const fontSize = 18;
-            const columns = Math.ceil(canvas.width / fontSize); // 修复右边空白
+            const columns = Math.ceil(canvas.width / fontSize);
             const drops = Array(columns).fill(1);
 
             function draw() {
